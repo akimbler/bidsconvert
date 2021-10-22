@@ -76,7 +76,7 @@ def run(command, env=None):
     return process.returncode
 
 
-def _get_parser():
+def get_parser():
     """Set up argument parser for scripts."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -92,6 +92,7 @@ def _get_parser():
         "--heuristic",
         type=Path,
         dest="heuristic",
+        required=True,
         metavar="HEUR",
         help="Path to a heuristic file or name of a builtin heudiconv heuristic.",
     )
@@ -138,10 +139,10 @@ def _get_parser():
 
 
 def main():
-    args = _get_parser()._parser_args()
+    args = get_parser().parse_args()
     # Heuristic may be file or heudiconv builtin
     # Use existence of file extension to determine if builtin or file
-    if args.heuristics.exists():
+    if not args.heuristic.exists():
         raise ValueError("Heuristic file must be an existing file.")
 
     temp_dicom_dir = Path(
@@ -150,9 +151,7 @@ def main():
     dcm_name = temp_dicom_dir.as_posix()
     if temp_dicom_dir.is_file():
         if not dcm_name.endswith(".gz") or dcm_name.endswith(".tar"):
-            raise ValueError(
-                "Heudiconv currently only accepts " ".tar and .tar.gz inputs"
-            )
+            raise ValueError("Heudiconv currently only accepts .tar and .tar.gz inputs")
         dir_type = "tarball"
     elif temp_dicom_dir.is_dir() or dcm_name.endswith(".dcm"):
         dir_type = "folder"
@@ -176,24 +175,26 @@ def main():
     # Run heudiconv
     if dir_type == "tarball":
         heudiconv(
-            dicom_dir_template=args.dicomdir.as_posix(),
+            dicom_dir_template=str(args.dicomdir.as_posix())
+            .replace(args.subject, "{subject}")
+            .replace(args.session, "{session}"),
             subjs=[args.subject],
             session=args.session,
-            heuristic=args.heuristic,
+            heuristic=str(args.heuristic.as_posix()),
             converter="dcm2niix",
-            outdir=str(args.output_dir),
+            outdir=str(args.output_dir.as_posix()),
             bids_options=["all"],
             overwrite=True,
             minmeta=True,
         )
     else:
         heudiconv(
-            files=args.dicomdir.as_posix(),
+            files=str(args.dicomdir.as_posix()),
             subjs=[args.subject],
             session=args.session,
-            heuristic=args.heuristic,
+            heuristic=str(args.heuristic.as_posix()),
             converter="dcm2niix",
-            outdir=str(args.output_dir),
+            outdir=str(args.output_dir.as_posix()),
             bids_options=["all"],
             overwrite=True,
             minmeta=True,
