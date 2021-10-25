@@ -169,10 +169,11 @@ def main():
         if args.session:
             work_dir = work_dir / args.session
     work_dir.mkdir(parents=True, exist_ok=True)
-    os.environ["TMPDIR"] = work_dir.as_posix()
+    os.environ["TMPDIR"] = str(work_dir.as_posix())
     cwd = os.getcwd()
     os.chdir(work_dir)
     # Run heudiconv
+    print(args.dicomdir.as_posix(), args.output_dir.as_posix(), args.heuristic.as_posix())
     if dir_type == "tarball":
         heudiconv(
             dicom_dir_template=str(args.dicomdir.as_posix())
@@ -213,11 +214,11 @@ def main():
     # Move "global" metadata keys to top level in jsons
     clean_metadata(args.output_dir, args.subject, args.session)
 
-    # Remove temporary subfolders from output directory
-    clean_tempdirs(args.output_dir, args.subject, args.session)
-
     # Update participants.tsv with current subject
     update_participants(args.output_dir, temp_dicom_dir)
+
+    # Remove temporary subfolders from output directory
+    clean_tempdirs(args.output_dir, args.subject, args.session)
 
     # Run defacer
     if args.deface_t1:
