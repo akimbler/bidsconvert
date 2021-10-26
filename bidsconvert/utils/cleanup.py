@@ -43,7 +43,7 @@ def clean_tempdirs(output_dir, sub, ses):
     sub: Subject ID
     ses: Session ID, if required
     """
-    for root in [".heudiconv", "tmp"]:
+    for root in [".heudiconv", ".tmp"]:
         if ses:
             if root == ".heudiconv":
                 print(
@@ -56,10 +56,11 @@ def clean_tempdirs(output_dir, sub, ses):
         if (output_dir / root / sub).is_dir():
             print("Removing Temp Directory: ", output_dir / root / sub)
             shutil.rmtree(output_dir / root / sub)
-        if (output_dir / root).is_dir():
-            if not (output_dir / root).iterdir():
-                print("Removing Temp Directory: ", output_dir / root)
-                shutil.rmtree((output_dir / root))
+        if (output_dir / root).is_dir() and not next(
+            (output_dir / root).iterdir(), None
+        ):
+            print("Removing Temp Directory: ", output_dir / root)
+            shutil.rmtree((output_dir / root))
 
 
 def update_participants(output_dir, dicom_dir, subject):
@@ -87,7 +88,7 @@ def update_participants(output_dir, dicom_dir, subject):
         )
 
         missing_cols = [
-            col for col in additional_data.columns if col not in data.columns
+            col for col in additional_data.columns if col not in participant_df.columns
         ]
         for mc in missing_cols:
             participant_df[mc] = np.nan

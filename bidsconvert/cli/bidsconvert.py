@@ -168,15 +168,21 @@ def main():
         work_dir = work_dir / args.subject
         if args.session:
             work_dir = work_dir / args.session
+    else:
+        work_dir = args.work_dir / args.subject
+        if args.session:
+            work_dir = work_dir / args.session
     work_dir.mkdir(parents=True, exist_ok=True)
     os.environ["TMPDIR"] = str(work_dir.as_posix())
     cwd = os.getcwd()
     os.chdir(work_dir)
     # Run heudiconv
-    print(args.dicomdir.as_posix(), args.output_dir.as_posix(), args.heuristic.as_posix())
+    print(
+        args.dicomdir.as_posix(), args.output_dir.as_posix(), args.heuristic.as_posix()
+    )
     if dir_type == "tarball":
         heudiconv(
-            dicom_dir_template=str(args.dicomdir.as_posix())
+            dicom_dir_template=str(temp_dicom_dir.as_posix())
             .replace(args.subject, "{subject}")
             .replace(args.session, "{session}"),
             subjs=[args.subject],
@@ -215,7 +221,7 @@ def main():
     clean_metadata(args.output_dir, args.subject, args.session)
 
     # Update participants.tsv with current subject
-    update_participants(args.output_dir, temp_dicom_dir)
+    update_participants(args.output_dir, temp_dicom_dir, args.subject)
 
     # Remove temporary subfolders from output directory
     clean_tempdirs(args.output_dir, args.subject, args.session)

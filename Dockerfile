@@ -11,6 +11,7 @@ FROM debian:stretch
 
 ARG DEBIAN_FRONTEND=noninteractive
 
+
 #----------------------------------------------------------
 # Install common dependencies and create default entrypoint
 #----------------------------------------------------------
@@ -40,6 +41,10 @@ RUN apt-get update -qq \
                                                      pigz \
                                                      wget \
                                                      curl \
+                                                     make \
+                                                     cmake \
+                                                     g++ \
+                                                     gcc \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
@@ -61,6 +66,7 @@ RUN source $NVM_DIR/nvm.sh \
 ENV NODE_PATH $NVM_DIR/v$NODE_VERSION/lib/node_modules
 ENV PATH $NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
 
+
 #------------------
 # Install Miniconda
 #------------------
@@ -76,24 +82,12 @@ RUN echo "Downloading Miniconda installer ..." \
     && conda config --system --set show_channel_urls true \
     && conda clean -tipsy && sync
 
-#-------------------------
-# Create conda environment
-#-------------------------
-COPY ./ /src/bidsconvert/
-USER root
-RUN chmod 755 -R /src/
-RUN conda create -y -q --name neuro python=3 \
-                                    traits=4.6.0 \
-    && sync && conda clean -tipsy && sync \
-    && /bin/bash -c "source activate neuro \
-      && pip install /src/bidsconvert[all]" \
-    && sync \
-    && sed -i '$isource activate neuro' $ND_ENTRYPOINT
 
 #---------------
 # BIDS-validator
 #---------------
 RUN npm install -g bids-validator
+
 
 #--------------------------------------------------
 # Add NeuroDebian repository
@@ -114,6 +108,17 @@ RUN apt-get update -qq && apt-get install -yq --no-install-recommends dirmngr gn
 RUN apt-get update -qq && apt-get install -yq --no-install-recommends git-annex-standalone \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+
+#-------------------------------
+# Install dcm2niix v1.0.20200331
+#-------------------------------
+RUN mkdir -p /src/dcm2niix \
+    && curl -sSL https://github.com/rordenlab/dcm2niix/tarball/v1.0.20200331 | tar xz -C /src/dcm2niix --strip-components 1 \
+    && mkdir /src/dcm2niix/build && cd /src/dcm2niix/build \
+    && cmake .. && make \
+    && make install
+
 
 #--------------------
 # Download mri_deface
@@ -136,6 +141,21 @@ RUN apt-get update -qq && apt-get install -yq --no-install-recommends git-annex-
 #   gunzip ${DEFACE_DIR}/talairach_mixed_with_skull.gca.gz
 
 # ENV PATH=$PATH:${DEFACE_DIR}
+
+#-------------------------
+# Create conda environment
+#-------------------------
+COPY ./ /src/bidsconvert/
+USER root
+RUN chmod 755 -R /src/
+RUN conda create -y -q --name neuro python=3 \
+                                    dcm2niix \
+                                    traits=4.6.0 \
+    && sync && conda clean -tipsy && sync \
+    && /bin/bash -c "source activate neuro \
+      && pip install /src/bidsconvert[all]" \
+    && sync \
+    && sed -i '$isource activate neuro' $ND_ENTRYPOINT
 
 # Create new user: neuro
 RUN useradd --no-user-group --create-home --shell /bin/bash neuro
